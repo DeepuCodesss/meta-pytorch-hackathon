@@ -1,3 +1,14 @@
+---
+title: PhantomShield X
+emoji: 🛡
+colorFrom: blue
+colorTo: purple
+sdk: docker
+app_port: 7860
+pinned: false
+license: mit
+---
+
 # 🛡 PhantomShield X
 ### AI Cyber Defense Training Environment — Scaler × OpenEnv Hackathon
 
