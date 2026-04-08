@@ -1,0 +1,155 @@
+name: PhantomShieldX
+version: "1.0.0"
+description: >
+  AI Cyber Defense Training Environment — an OpenEnv-compliant simulation
+  where an AI agent acts as a cybersecurity analyst, detecting and responding
+  to threats by analysing system logs, alerts, and network activity.
+
+author: "PhantomShield X Team"
+license: MIT
+
+# ── OpenEnv Interface ────────────────────────────────────────────────────────
+interface:
+  reset:
+    description: "Initialise (or restart) the environment for a given task."
+    returns: SystemState
+  step:
+    description: "Execute one agent action and return the result."
+    parameters:
+      action:
+        type: string
+        enum: [ignore, flag_suspicious, block_ip, escalate]
+      target:
+        type: string
+        nullable: true
+        description: "IP address or alert_id the action targets."
+    returns: StepResult   # { state, reward, done, info }
+  state:
+    description: "Return the current SystemState without advancing the environment."
+    returns: SystemState
+
+# ── Tasks ───────────────────────────────────────────────────────────────────
+tasks:
+  - id: easy
+    name: "Brute Force Login Detection"
+    difficulty: easy
+    description: >
+      An attacker IP launches 8 consecutive failed login attempts against
+      the admin account, then succeeds. The agent must identify and block
+      the attacker before damage is done.
+    max_steps: 10
+    threat_ip: "192.168.1.105"
+    indicators:
+      - "8+ failed logins from same IP"
+      - "High-severity ALERT-001 triggered"
+
+  - id: medium
+    name: "After-Hours Geo-Anomaly Detection"
+    difficulty: medium
+    description: >
+      User 'charlie' logs in at 3 AM from Eastern Europe — never seen before —
+      and immediately accesses sensitive HR and payroll files. The agent must
+      correlate time, location, and file access to confirm compromise.
+    max_steps: 10
+    threat_ip: "203.0.113.77"
+    indicators:
+      - "Off-hours login (03:14 AM)"
+      - "Novel geographic origin (Eastern Europe)"
+      - "Immediate sensitive file access"
+
+  - id: hard
+    name: "Multi-Stage APT Attack"
+    difficulty: hard
+    description: >
+      User 'eve' executes a classic APT kill chain: VPN login → sudoers read
+      → cron backdoor → privilege escalation → 52 MB data exfiltration.
+      Individual alerts are low-severity; the agent must correlate them.
+    max_steps: 10
+    threat_ip: "198.51.100.42"
+    indicators:
+      - "Three low/medium alerts from the same source IP"
+      - "ALERT-006 (privilege escalation) appears at step 3"
+      - "Large outbound transfer to external host"
+
+# ── Actions ─────────────────────────────────────────────────────────────────
+actions:
+  ignore:
+    description: "Take no action this step."
+    requires_target: false
+
+  flag_suspicious:
+    description: "Mark an IP address as suspicious for further monitoring."
+    requires_target: true
+    target_type: ip_address
+
+  block_ip:
+    description: "Immediately block all traffic from the specified IP."
+    requires_target: true
+    target_type: ip_address
+
+  escalate:
+    description: "Escalate an alert to the human security team."
+    requires_target: true
+    target_type: alert_id
+
+# ── Reward ───────────────────────────────────────────────────────────────────
+reward:
+  correct_detection_early:  1.0    # Detected within first 3 steps
+  correct_detection_late:   0.5    # Detected after step 3
+  false_positive:          -0.5    # Actioned a non-threat
+  missed_threat:           -1.0    # Episode ended without detection
+
+# ── Grading ─────────────────────────────────────────────────────────────────
+grading:
+  score_range: [0.0, 1.0]
+  deterministic: true
+  criteria:
+    easy:
+      - correct_detection:   40%
+      - early_detection:     30%
+      - no_false_positives:  20%
+      - efficiency:          10%
+    medium:
+      - correct_identification: 35%
+      - appropriate_action:     25%
+      - alert_addressed:        20%
+      - no_false_positives:     10%
+      - speed:                  10%
+    hard:
+      - chain_correlated:       30%
+      - ip_blocked:             25%
+      - priv_esc_recognized:    20%
+      - no_false_positives:     15%
+      - response_speed:         10%
+
+# ── State Schema ─────────────────────────────────────────────────────────────
+state_schema:
+  step:            integer
+  task_id:         string
+  login_events:    list[LoginEvent]
+  file_events:     list[FileAccessEvent]
+  network_events:  list[NetworkEvent]
+  alerts:          list[Alert]
+  sessions:        list[SessionData]
+  flagged_ips:     list[string]
+  blocked_ips:     list[string]
+  escalated_alerts: list[string]
+  threat_detected: boolean
+  done:            boolean
+  message:         string
+
+# ── Deployment ───────────────────────────────────────────────────────────────
+deployment:
+  platform: HuggingFace Spaces
+  sdk: gradio
+  python_version: "3.11"
+  entry_point: app.py
+  inference_script: inference.py
+  llm_client: openai
+  environment_variables:
+    API_BASE_URL: "OpenAI-compatible LLM endpoint base URL"
+    MODEL_NAME: "Model identifier for inference"
+    HF_TOKEN: "HuggingFace / API key"
+    TASK: "Task to run: easy | medium | hard | all (default: all)"
+    VERBOSE: "Set to 1 for verbose step output"
+  fallback_agent: heuristic
