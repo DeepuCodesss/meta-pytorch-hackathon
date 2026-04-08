@@ -227,9 +227,9 @@ with gr.Blocks(css=CSS, title="PhantomShield X") as demo:
 
     gr.Markdown(
         "_PhantomShield X — Built for Scaler OpenEnv Hackathon · "
-        "[GitHub](https://github.com/your-repo/phantomshield-x)_"
+        "[GitHub](https://github.com/DeepuCodesss/meta-pytorch-hackathon)_"
     )
 
 
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(server_name="0.0.0.0", server_port=7860)

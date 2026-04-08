@@ -34,5 +34,6 @@ EXPOSE 7860
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s \
   CMD python -c "from environment.env import PhantomShieldEnv; PhantomShieldEnv('easy').reset(); print('OK')" || exit 1
 
-# Default: run inference (uses LLM if env vars set, else heuristic fallback)
-CMD ["python", "inference.py"]
+# Default: launch Gradio UI (HuggingFace Spaces entry point — validator pings port 7860)
+# To run inference only: docker run <image> python inference.py
+CMD ["python", "app.py"]
