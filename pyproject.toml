@@ -24,9 +24,10 @@ dependencies = [
     "pydantic>=2.0,<3.0",
     "gradio>=4.0,<6.0",
     "pyyaml>=6.0",
-    "openai>=1.0,<2.0",
+    "openai>=2.7.2",
     "fastapi>=0.110.0",
     "uvicorn>=0.29.0",
+    "openenv-core>=0.2.0",
 ]
 
 [project.optional-dependencies]
@@ -35,11 +36,12 @@ dev = [
 ]
 
 [project.scripts]
+server = "server.app:main"
 phantomshield-x = "inference:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["environment*", "tasks*", "graders*"]
+include = ["environment*", "tasks*", "graders*", "server*"]
 
 [tool.setuptools.package-data]
 "*" = ["openenv.yaml", "*.md"]
