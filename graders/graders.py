@@ -15,7 +15,7 @@ from environment.env import SystemState
 
 @dataclass
 class GradeResult:
-    score: int                      # 0 or 1
+    score: float                    # 0.0 – 1.0
     label: str                      # "Excellent" / "Good" / "Partial" / "Failed"
     breakdown: Dict[str, Any]       # per-criterion scores
     feedback: str                   # human-readable feedback
@@ -124,8 +124,8 @@ class EasyGrader(BaseGrader):
             breakdown["efficiency"] = max(0.0, 10.0 - ignore_count * 2.0)
 
         raw_score = sum(breakdown.values())  # max 100
-        raw_normalized = raw_score / 100.0
-        score = 1 if raw_normalized >= 0.50 else 0
+        score = round(raw_score / 100.0, 4)
+        score = max(0.01, min(0.99, score))
 
         feedback_lines = [
             f"Threat IP correctly handled: {correctly_handled}",
@@ -137,7 +137,7 @@ class EasyGrader(BaseGrader):
 
         return GradeResult(
             score=score,
-            label=self._label(raw_normalized),
+            label=self._label(score),
             breakdown=breakdown,
             feedback="\n".join(feedback_lines),
         )
@@ -202,8 +202,7 @@ class MediumGrader(BaseGrader):
         breakdown["speed"] = 10.0 if (detection_step and detection_step <= 5) else 0.0
 
         raw_score = sum(breakdown.values())
-        raw_normalized = raw_score / 100.0
-        score = 1 if raw_normalized >= 0.50 else 0
+        score = round(max(0.01, min(0.99, raw_score / 100.0)), 4)
 
         feedback_lines = [
             f"Threat identified: {identified}",
@@ -215,7 +214,7 @@ class MediumGrader(BaseGrader):
 
         return GradeResult(
             score=score,
-            label=self._label(raw_normalized),
+            label=self._label(score),
             breakdown=breakdown,
             feedback="\n".join(feedback_lines),
         )
@@ -275,8 +274,7 @@ class HardGrader(BaseGrader):
         breakdown["response_speed"] = 10.0 if acted_after_006 else 0.0
 
         raw_score = sum(breakdown.values())
-        raw_normalized = raw_score / 100.0
-        score = 1 if raw_normalized >= 0.50 else 0
+        score = round(max(0.01, min(0.99, raw_score / 100.0)), 4)
 
         feedback_lines = [
             f"Attack chain correlated (any escalation): {escalated}",
@@ -288,7 +286,7 @@ class HardGrader(BaseGrader):
 
         return GradeResult(
             score=score,
-            label=self._label(raw_normalized),
+            label=self._label(score),
             breakdown=breakdown,
             feedback="\n".join(feedback_lines),
         )
