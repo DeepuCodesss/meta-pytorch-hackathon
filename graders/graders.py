@@ -1,6 +1,6 @@
 """
 PhantomShield X – Agent Graders
-Deterministic graders that evaluate an agent's episode and return a score in [0.0, 1.0].
+Deterministic graders that evaluate an agent's episode and return a score strictly in [0.01, 0.99].
 """
 
 import sys
@@ -15,7 +15,7 @@ from environment.env import SystemState
 
 @dataclass
 class GradeResult:
-    score: float                    # 0.0 – 1.0
+    score: float                    # strictly (0, 1)
     label: str                      # "Excellent" / "Good" / "Partial" / "Failed"
     breakdown: Dict[str, Any]       # per-criterion scores
     feedback: str                   # human-readable feedback
