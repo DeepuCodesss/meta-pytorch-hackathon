@@ -101,7 +101,7 @@ reward:
 
 # ── Grading ─────────────────────────────────────────────────────────────────
 grading:
-  score_range: [0.0, 1.0]
+  score_range: [0, 1]
   deterministic: true
   criteria:
     easy:
