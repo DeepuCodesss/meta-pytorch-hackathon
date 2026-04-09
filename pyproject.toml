@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=68.0", "wheel"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "phantomshield-x"
@@ -35,7 +35,7 @@ dev = [
 ]
 
 [project.scripts]
-phantomshield-x = "app:main"
+phantomshield-x = "inference:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
