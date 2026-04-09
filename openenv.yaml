@@ -141,7 +141,7 @@ state_schema:
 # ── Deployment ───────────────────────────────────────────────────────────────
 deployment:
   platform: HuggingFace Spaces
-  sdk: gradio
+  sdk: docker
   python_version: "3.11"
   entry_point: app.py
   inference_script: inference.py
@@ -153,3 +153,24 @@ deployment:
     TASK: "Task to run: easy | medium | hard | all (default: all)"
     VERBOSE: "Set to 1 for verbose step output"
   fallback_agent: heuristic
+  port: 7860
+
+# ── HTTP Endpoints ──────────────────────────────────────────────────────────
+endpoints:
+  reset:
+    method: POST
+    path: /reset
+    description: "Initialise or restart the environment. Body: {task_id: easy|medium|hard} (optional, defaults to easy)"
+    returns: SystemState
+
+  state:
+    method: GET
+    path: /state
+    description: "Return the current SystemState without advancing the environment."
+    returns: SystemState
+
+  step:
+    method: POST
+    path: /step
+    description: "Execute one agent action. Body: {action: string, target: string|null}"
+    returns: StepResult

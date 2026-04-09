@@ -9,11 +9,10 @@ Both live on the same port (7860) via a single uvicorn server.
 import json
 import os
 import sys
-import threading
 
 import gradio as gr
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from typing import Optional
@@ -59,9 +58,19 @@ def root():
 
 
 @api.post("/reset")
-def reset(body: ResetRequest = None):
-    """Initialise (or restart) the environment. Returns the initial SystemState."""
-    task_id = (body.task_id if body else None) or "easy"
+async def reset(request: Request):
+    """Initialise (or restart) the environment. Returns the initial SystemState.
+    Accepts an optional JSON body: {"task_id": "easy"} — defaults to "easy" if omitted.
+    """
+    task_id = "easy"
+    try:
+        body_bytes = await request.body()
+        if body_bytes:
+            body_json = json.loads(body_bytes)
+            task_id = body_json.get("task_id", "easy")
+    except Exception:
+        pass  # empty or non-JSON body → use default task_id
+
     if task_id not in TASK_REGISTRY:
         raise HTTPException(status_code=400, detail=f"Unknown task_id '{task_id}'. Valid: easy, medium, hard")
     runner = TaskRunner(task_id)
