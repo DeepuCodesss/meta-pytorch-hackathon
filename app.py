@@ -1,12 +1,22 @@
 """
-PhantomShield X – HuggingFace Spaces Entry Point (Gradio UI)
-Run: python app.py
+PhantomShield X – Entry Point
+Serves BOTH:
+  • FastAPI REST API  (OpenEnv checker endpoints)  — /reset, /state, /step
+  • Gradio UI                                       — /ui/
+Both live on the same port (7860) via a single uvicorn server.
 """
 
 import json
-import gradio as gr
-import sys
 import os
+import sys
+import threading
+
+import gradio as gr
+import uvicorn
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
+from typing import Optional
 
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -17,7 +27,76 @@ from inference import HeuristicAgent, LLMAgent, run_episode
 
 
 # ---------------------------------------------------------------------------
-# Session state (per Gradio session via gr.State)
+# FastAPI app + OpenEnv REST endpoints
+# ---------------------------------------------------------------------------
+
+api = FastAPI(title="PhantomShield X OpenEnv API", version="1.0.0")
+
+# Global environment store — the checker is effectively single-session,
+# so we keep one env per task_id and always return its state.
+_env_store: dict[str, PhantomShieldEnv] = {}
+_runner_store: dict[str, TaskRunner] = {}
+
+
+class ResetRequest(BaseModel):
+    task_id: str = Field(default="easy", description="Task difficulty: easy | medium | hard")
+
+
+class StepRequest(BaseModel):
+    action: str = Field(..., description="One of: ignore, flag_suspicious, block_ip, escalate")
+    target: Optional[str] = Field(default=None, description="IP address or alert_id")
+
+
+def _get_runner(task_id: str) -> TaskRunner:
+    if task_id not in _runner_store:
+        raise HTTPException(status_code=400, detail=f"No active session for task '{task_id}'. Call /reset first.")
+    return _runner_store[task_id]
+
+
+@api.get("/")
+def root():
+    return {"status": "ok", "service": "PhantomShield X OpenEnv API", "version": "1.0.0"}
+
+
+@api.post("/reset")
+def reset(body: ResetRequest = None):
+    """Initialise (or restart) the environment. Returns the initial SystemState."""
+    task_id = (body.task_id if body else None) or "easy"
+    if task_id not in TASK_REGISTRY:
+        raise HTTPException(status_code=400, detail=f"Unknown task_id '{task_id}'. Valid: easy, medium, hard")
+    runner = TaskRunner(task_id)
+    _runner_store[task_id] = runner
+    state = runner.reset()
+    return JSONResponse(content=state.model_dump(mode="json"))
+
+
+@api.get("/state")
+def get_state(task_id: str = "easy"):
+    """Return the current SystemState without advancing the environment."""
+    runner = _get_runner(task_id)
+    state = runner.state()
+    return JSONResponse(content=state.model_dump(mode="json"))
+
+
+@api.post("/step")
+def step(body: StepRequest, task_id: str = "easy"):
+    """Execute one agent action and return StepResult."""
+    runner = _get_runner(task_id)
+    try:
+        result = runner.step(action=body.action, target=body.target or None)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    payload = {
+        "state": result.state.model_dump(mode="json"),
+        "reward": result.reward,
+        "done": result.done,
+        "info": result.info,
+    }
+    return JSONResponse(content=payload)
+
+
+# ---------------------------------------------------------------------------
+# Session state helpers (Gradio)
 # ---------------------------------------------------------------------------
 
 def make_fresh_session():
@@ -30,10 +109,6 @@ def make_fresh_session():
         "task_id": "easy",
     }
 
-
-# ---------------------------------------------------------------------------
-# UI helpers
-# ---------------------------------------------------------------------------
 
 def format_state(state) -> str:
     if state is None:
@@ -59,7 +134,7 @@ def start_task(task_id: str, session: dict):
         format_state(state),
         info_md,
         "Task started. Analyse the state and choose an action.",
-        "",           # clear reward box
+        "",
     )
 
 
@@ -231,5 +306,12 @@ with gr.Blocks(css=CSS, title="PhantomShield X") as demo:
     )
 
 
+# ---------------------------------------------------------------------------
+# Mount Gradio onto FastAPI and launch with uvicorn
+# ---------------------------------------------------------------------------
+
+# Mount the Gradio app at /ui so the root path is free for the REST API
+app = gr.mount_gradio_app(api, demo, path="/ui")
+
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860)
+    uvicorn.run(app, host="0.0.0.0", port=7860)
