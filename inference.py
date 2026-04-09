@@ -47,7 +47,7 @@ LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")   # Optional: used with from_do
 
 def log_start(task_id: str, task_name: str, model: str, api_base_url: str):
     # Required structured block — OpenEnv Phase 2 validator scans stdout for [START]
-    print(f"[START] task={task_name} task_id={task_id} model={model}", flush=True)
+    print(f"[START] task={task_name}", flush=True)
     # Full JSON record for tooling
     record = {
         "event":        "START",
@@ -63,9 +63,7 @@ def log_step(task_id: str, step: int, action: str, target: Any,
              reward: float, cumulative_reward: float, reasoning: str):
     # Required structured block — OpenEnv Phase 2 validator scans stdout for [STEP]
     print(
-        f"[STEP] task_id={task_id} step={step} action={action} "
-        f"target={target} reward={round(reward, 4)} "
-        f"cumulative_reward={round(cumulative_reward, 4)}",
+        f"[STEP] step={step} reward={round(reward, 4)}",
         flush=True,
     )
     # Full JSON record for tooling
@@ -85,9 +83,9 @@ def log_step(task_id: str, step: int, action: str, target: Any,
 def log_end(task_id: str, steps: int, cumulative_reward: float,
             score: float, label: str, breakdown: Dict, feedback: str):
     # Required structured block — OpenEnv Phase 2 validator scans stdout for [END]
+    task_name = TASK_REGISTRY[task_id].name if task_id in TASK_REGISTRY else task_id
     print(
-        f"[END] task_id={task_id} steps={steps} score={round(score, 4)} "
-        f"label={label} cumulative_reward={round(cumulative_reward, 4)}",
+        f"[END] task={task_name} score={round(score, 4)} steps={steps}",
         flush=True,
     )
     # Full JSON record for tooling
