@@ -41,9 +41,10 @@ class BaseGrader:
 
     @staticmethod
     def _normalize(raw: float, min_val: float, max_val: float) -> float:
-        """Clamp and normalize raw score to [0, 1]."""
+        """Clamp and normalize raw score strictly to (0, 1)."""
         clamped = max(min_val, min(max_val, raw))
-        return (clamped - min_val) / (max_val - min_val)
+        normalized = (clamped - min_val) / (max_val - min_val)
+        return max(0.01, min(0.99, normalized))
 
     @staticmethod
     def _label(score: float) -> str:
@@ -124,7 +125,7 @@ class EasyGrader(BaseGrader):
 
         raw_score = sum(breakdown.values())  # max 100
         score = round(raw_score / 100.0, 4)
-        score = max(0.0, min(1.0, score))
+        score = max(0.01, min(0.99, score))
 
         feedback_lines = [
             f"Threat IP correctly handled: {correctly_handled}",
@@ -201,7 +202,7 @@ class MediumGrader(BaseGrader):
         breakdown["speed"] = 10.0 if (detection_step and detection_step <= 5) else 0.0
 
         raw_score = sum(breakdown.values())
-        score = round(max(0.0, min(1.0, raw_score / 100.0)), 4)
+        score = round(max(0.01, min(0.99, raw_score / 100.0)), 4)
 
         feedback_lines = [
             f"Threat identified: {identified}",
@@ -273,7 +274,7 @@ class HardGrader(BaseGrader):
         breakdown["response_speed"] = 10.0 if acted_after_006 else 0.0
 
         raw_score = sum(breakdown.values())
-        score = round(max(0.0, min(1.0, raw_score / 100.0)), 4)
+        score = round(max(0.01, min(0.99, raw_score / 100.0)), 4)
 
         feedback_lines = [
             f"Attack chain correlated (any escalation): {escalated}",
